@@ -1,0 +1,138 @@
+{% extends 'career/base.html' %}
+{% block title %}Register | Consilium  -  Smart Career Advisor{% endblock %}
+{% block content %}
+<div class="card form-card">
+  <h2>Create Account</h2>
+  <p class="muted">Create a free account and start your career plan.</p>
+  <form method="post" novalidate id="register-form">
+    {% csrf_token %}
+
+    <div class="field">
+      <label for="id_full_name">Full Name</label>
+      <input type="text" name="full_name" id="id_full_name" class="input"
+             placeholder="Your full name" value="{{ form.full_name.value|default:'' }}" required>
+      {% for error in form.full_name.errors %}<p class="error">{{ error }}</p>{% endfor %}
+    </div>
+
+    <div class="field">
+      <label for="id_phone">Phone Number</label>
+      <input type="text" name="phone" id="id_phone" class="input"
+             placeholder="Phone number (optional)" value="{{ form.phone.value|default:'' }}">
+      {% for error in form.phone.errors %}<p class="error">{{ error }}</p>{% endfor %}
+    </div>
+
+    <div class="field">
+      <label for="email">Email</label>
+      <input type="email" name="email" id="email" class="input"
+             placeholder="Email address" value="{{ form.email.value|default:'' }}" required>
+      <p id="email-hint" class="hint-text"></p>
+      {% for error in form.email.errors %}<p class="error">{{ error }}</p>{% endfor %}
+    </div>
+
+    <div class="field">
+      <label for="id_password1">Password</label>
+      <input type="password" name="password1" id="id_password1" class="input"
+             placeholder="Password (min 6 characters)" required autocomplete="new-password">
+      <div id="pw-bar"><div id="pw-fill"></div></div>
+      <p id="pw-label" class="hint-text"></p>
+      {% for error in form.password1.errors %}<p class="error">{{ error }}</p>{% endfor %}
+    </div>
+
+    <div class="field">
+      <label for="id_password2">Confirm Password</label>
+      <input type="password" name="password2" id="id_password2" class="input"
+             placeholder="Re-enter your password" required autocomplete="new-password">
+      {% for error in form.password2.errors %}<p class="error">{{ error }}</p>{% endfor %}
+    </div>
+
+    {% for error in form.non_field_errors %}<p class="error">{{ error }}</p>{% endfor %}
+    <p class="error" id="pw-submit-error" style="display:none;"></p>
+
+    <button type="submit" class="btn btn-primary btn-block">Register</button>
+  </form>
+  <p class="muted small" style="margin-top:14px;">Already have an account? <a href="{% url 'login' %}">Login</a></p>
+</div>
+
+<script>
+(function() {
+  var emailInput = document.getElementById('email');
+  var emailHint = document.getElementById('email-hint');
+  var emailTimer = null;
+  emailInput.addEventListener('input', function() {
+    var v = emailInput.value.trim();
+    if (!v) { emailHint.textContent = ''; return; }
+    if (v.indexOf('@') === -1) {
+      emailHint.textContent = 'Email must contain @';
+      emailHint.style.color = '#c0392b';
+      return;
+    }
+    if (!/.+@.+\..+/.test(v)) { emailHint.textContent = ''; return; }
+    emailHint.textContent = 'Checking...';
+    emailHint.style.color = '#666';
+    clearTimeout(emailTimer);
+    emailTimer = setTimeout(function() {
+      fetch('/check-email/?email=' + encodeURIComponent(v))
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+          if (data.exists) {
+            emailHint.textContent = 'An account with this email already exists. Please log in.';
+            emailHint.style.color = '#c0392b';
+          } else {
+            emailHint.textContent = '\u2713 Email looks good';
+            emailHint.style.color = '#27ae60';
+          }
+        })
+        .catch(function() { emailHint.textContent = ''; });
+    }, 500);
+  });
+
+  var pwInput = document.getElementById('id_password1');
+  var pwFill = document.getElementById('pw-fill');
+  var pwLabel = document.getElementById('pw-label');
+  var submitError = document.getElementById('pw-submit-error');
+
+  function scorePassword(pw) {
+    var score = 0;
+    if (pw.length >= 8) score++;
+    if (pw.length >= 12) score++;
+    if (/[a-z]/.test(pw)) score++;
+    if (/[A-Z]/.test(pw)) score++;
+    if (/[0-9]/.test(pw)) score++;
+    if (/[^a-zA-Z0-9]/.test(pw)) score++;
+    return score;
+  }
+
+  function strengthInfo(score) {
+    if (score <= 2) return { label: 'Weak', color: '#c0392b' };
+    if (score <= 4) return { label: 'Moderate', color: '#e67e22' };
+    return { label: 'Strong', color: '#27ae60' };
+  }
+
+  pwInput.addEventListener('input', function() {
+    var v = pwInput.value;
+    if (!v) {
+      pwFill.style.width = '0%';
+      pwLabel.textContent = '';
+      return;
+    }
+    var score = scorePassword(v);
+    var info = strengthInfo(score);
+    pwFill.style.width = (score / 6 * 100) + '%';
+    pwFill.style.background = info.color;
+    pwLabel.textContent = 'Password strength: ' + info.label;
+    pwLabel.style.color = info.color;
+    submitError.style.display = 'none';
+  });
+
+  document.getElementById('register-form').addEventListener('submit', function(e) {
+    var score = scorePassword(pwInput.value);
+    if (score <= 2) {
+      e.preventDefault();
+      submitError.textContent = 'Password is weak \u2014 it must be at least Moderate';
+      submitError.style.display = 'block';
+      pwInput.focus();
+    }
+  });
+})();
+</script>
+{% endblock %}

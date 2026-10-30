@@ -1,0 +1,36 @@
+{% extends 'career/base.html' %}
+{% block title %}Verify Email | Consilium  -  Smart Career Advisor{% endblock %}
+{% block content %}
+<div class="card form-card">
+  <div class="otp-wrap">
+    <span class="step-num">&#10003;</span>
+    <h2>Verify Your Email</h2>
+    <p class="muted">A 6-digit code has been sent to: <strong>{{ email }}</strong></p>
+
+    {% if form %}
+      {% for error in form.non_field_errors %}<p class="error">{{ error }}</p>{% endfor %}
+      {% for field in form %}
+        {% for error in field.errors %}<p class="error">{{ error }}</p>{% endfor %}
+      {% endfor %}
+    {% endif %}
+
+    <form method="post" novalidate>
+      {% csrf_token %}
+      <div class="field">
+        <label for="code" style="text-align:center;">Verification Code</label>
+        <input type="text" name="code" id="code" class="input otp-input"
+               inputmode="numeric" maxlength="6" required autocomplete="one-time-code"
+               placeholder="------" pattern="[0-9]{6}">
+      </div>
+      <button type="submit" class="btn btn-primary">Verify</button>
+    </form>
+
+    <form method="post" action="{% url 'resend_otp' %}" class="resend-line">
+      {% csrf_token %}
+      <span class="muted small">Didn't get the code?</span>
+      <button type="submit" class="link-btn">Resend code</button>
+    </form>
+    <p class="muted small">The code expires in 10 minutes.</p>
+  </div>
+</div>
+{% endblock %}

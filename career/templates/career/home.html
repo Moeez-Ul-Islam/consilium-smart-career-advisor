@@ -1,0 +1,33 @@
+{% extends 'career/base.html' %}
+{% block title %}Home | Consilium  -  Smart Career Advisor{% endblock %}
+{% block content %}
+<div class="hero card">
+  <span class="hero-badge">For Matric &amp; Inter Students</span>
+  <h1>Choose Your Best Career</h1>
+  <p>Based on your Matric / Inter marks and a 30-question personality test, get your
+     <strong>top 3 careers</strong>, bachelor degree programs, and a list of
+     Pakistani universities  -  all in one smart plan.</p>
+  <div class="hero-actions">
+    <a href="{% url 'register' %}" class="btn btn-primary">Get Started</a>
+    <a href="{% url 'login' %}" class="btn">Login</a>
+  </div>
+</div>
+
+<div class="grid-3">
+  <div class="card">
+    <span class="step-num">1</span>
+    <h3>Enter Your Marks</h3>
+    <p class="muted">Enter your Matric and Inter marks manually or upload your marksheet  -  it only takes 2 minutes.</p>
+  </div>
+  <div class="card">
+    <span class="step-num">2</span>
+    <h3>Personality Test</h3>
+    <p class="muted">A 30-question Holland Code test that understands your personality type and interests.</p>
+  </div>
+  <div class="card">
+    <span class="step-num">3</span>
+    <h3>View Your Results</h3>
+    <p class="muted">Get your top 3 careers, recommended bachelor degrees, and a list of top Pakistani universities.</p>
+  </div>
+</div>
+{% endblock %}

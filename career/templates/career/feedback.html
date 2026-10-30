@@ -1,0 +1,59 @@
+{% extends 'career/base.html' %}
+{% block title %}Feedback | Consilium  -  Smart Career Advisor{% endblock %}
+{% block content %}
+<h1>Your Feedback</h1>
+<p class="muted">Tell us what works and what needs fixing. We read every message.</p>
+
+<div class="card" style="max-width: 640px;">
+  <form method="post" action="{% url 'feedback' %}">
+    {% csrf_token %}
+    <div class="form-row">
+      <label for="id_category">Related to</label>
+      <select name="category" id="id_category" class="input">
+        {% for key, label in categories %}
+          <option value="{{ key }}"{% if key == initial %} selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="form-row">
+      <label>Rating</label>
+      <div class="stars" id="stars">
+        {% for i in "12345" %}
+          <button type="button" class="star" data-value="{{ forloop.counter }}" aria-label="{{ forloop.counter }} stars">&#9733;</button>
+        {% endfor %}
+      </div>
+      <input type="hidden" name="rating" id="id_rating" value="5">
+    </div>
+    <div class="form-row">
+      <label for="id_message">Message</label>
+      <textarea name="message" id="id_message" rows="5" class="input" maxlength="2000"
+                placeholder="Describe the issue or share your suggestion..." required></textarea>
+    </div>
+    <button type="submit" class="btn">Send Feedback</button>
+  </form>
+</div>
+
+<style>
+.stars { display: flex; gap: 4px; font-size: 28px; }
+.star { background: none; border: none; cursor: pointer; color: #d7e8dc; padding: 0; }
+.star.active { color: #f5a623; }
+</style>
+<script>
+(function () {
+  var stars = document.querySelectorAll('#stars .star');
+  var input = document.getElementById('id_rating');
+  function paint(n) {
+    stars.forEach(function (s) {
+      s.classList.toggle('active', parseInt(s.dataset.value, 10) <= n);
+    });
+  }
+  stars.forEach(function (s) {
+    s.addEventListener('click', function () {
+      input.value = s.dataset.value;
+      paint(parseInt(s.dataset.value, 10));
+    });
+  });
+  paint(5);
+})();
+</script>
+{% endblock %}

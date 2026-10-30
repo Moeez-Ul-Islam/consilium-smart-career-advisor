@@ -1,0 +1,117 @@
+{% extends 'career/base.html' %}
+{% block title %}Dashboard | Consilium  -  Smart Career Advisor{% endblock %}
+{% block content %}
+
+<div class="card dash-hero">
+  <div>
+    <p class="muted small dash-eyebrow">Your career journey</p>
+    <h1>Welcome, {{ user.full_name|default:user.email }}!</h1>
+    <p class="muted">Complete the steps below in order to unlock your personalized
+      career recommendations.</p>
+  </div>
+  <div class="dash-chips">
+    {% if matric %}
+      <span class="chip"><span class="chip-label">Matric</span><span class="chip-value">{{ matric.percentage }}%</span></span>
+    {% endif %}
+    {% if inter %}
+      <span class="chip"><span class="chip-label">Inter</span><span class="chip-value">{{ inter.percentage }}%</span></span>
+    {% endif %}
+    {% if psych %}
+      <span class="chip"><span class="chip-label">Personality</span><span class="chip-value">{{ psych.dominant }}</span></span>
+    {% endif %}
+  </div>
+</div>
+
+<div class="tracker">
+  <div class="track-step {% if progress.matric_done %}is-done{% else %}is-current{% endif %}">
+    <div class="track-dot">{% if progress.matric_done %}&#10003;{% else %}1{% endif %}</div>
+    <div class="track-body">
+      <h3>Matric Result</h3>
+      <p class="muted small">{% if progress.matric_done %}Saved ({{ matric.percentage }}%){% else %}Select your stream and enter marks{% endif %}</p>
+      <a href="{% url 'matric_entry' %}" class="btn btn-sm {% if not progress.matric_done %}btn-primary{% endif %}">
+        {% if progress.matric_done %}Edit{% else %}Start{% endif %}</a>
+      {% if progress.matric_done %}
+      <form method="post" action="{% url 'delete_record' level='matric' %}" class="inline-form"
+            onsubmit="return confirm('Delete your Matric marks? You can enter them again.');">
+        {% csrf_token %}
+        <button type="submit" class="link-danger small">Delete</button>
+      </form>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="track-step {% if progress.inter_done %}is-done{% elif progress.matric_done %}is-current{% else %}is-locked{% endif %}">
+    <div class="track-dot">{% if progress.inter_done %}&#10003;{% else %}2{% endif %}</div>
+    <div class="track-body">
+      <h3>Inter Result</h3>
+      <p class="muted small">{% if progress.inter_done %}Saved ({{ inter.percentage }}%){% elif progress.matric_done %}Enter your Inter result{% else %}Complete Matric first{% endif %}</p>
+      {% if progress.matric_done or progress.inter_done %}
+        <a href="{% url 'inter_entry' %}" class="btn btn-sm {% if not progress.inter_done %}btn-primary{% endif %}">
+          {% if progress.inter_done %}Edit{% else %}Start{% endif %}</a>
+        {% if progress.inter_done %}
+        <form method="post" action="{% url 'delete_record' level='inter' %}" class="inline-form"
+              onsubmit="return confirm('Delete your Inter marks? You can enter them again.');">
+          {% csrf_token %}
+          <button type="submit" class="link-danger small">Delete</button>
+        </form>
+        {% endif %}
+      {% else %}
+        <span class="btn btn-sm btn-disabled">&#128274; Locked</span>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="track-step {% if progress.test_done %}is-done{% elif progress.inter_done %}is-current{% else %}is-locked{% endif %}">
+    <div class="track-dot">{% if progress.test_done %}&#10003;{% else %}3{% endif %}</div>
+    <div class="track-body">
+      <h3>Personality Test</h3>
+      <p class="muted small">{% if progress.test_done %}Completed{% elif progress.inter_done %}30 questions, 5-7 minutes{% else %}Complete Inter first{% endif %}</p>
+      {% if progress.inter_done or progress.test_done %}
+        <a href="{% url 'psych_test' %}" class="btn btn-sm {% if not progress.test_done %}btn-primary{% endif %}">
+          {% if progress.test_done %}Retake{% else %}Start{% endif %}</a>
+      {% else %}
+        <span class="btn btn-sm btn-disabled">&#128274; Locked</span>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="track-step {% if progress.matric_done and progress.inter_done and progress.test_done %}is-current{% else %}is-locked{% endif %}">
+    <div class="track-dot">4</div>
+    <div class="track-body">
+      <h3>Results</h3>
+      <p class="muted small">{% if progress.matric_done and progress.inter_done and progress.test_done %}Your recommendations are ready{% else %}Finish the test to unlock{% endif %}</p>
+      {% if progress.matric_done and progress.inter_done and progress.test_done %}
+        <a href="{% url 'results' %}" class="btn btn-sm btn-primary">View Results</a>
+      {% else %}
+        <span class="btn btn-sm btn-disabled">&#128274; Locked</span>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+{% if next_step == 'matric' %}
+  <div class="card highlight">
+    <h3>Let's begin!</h3>
+    <p class="muted">Enter your Matric result to start your career assessment.</p>
+    <a href="{% url 'matric_entry' %}" class="btn btn-primary">Continue: Matric Result &rarr;</a>
+  </div>
+{% elif next_step == 'inter' %}
+  <div class="card highlight">
+    <h3>Matric done - nice work!</h3>
+    <p class="muted">Next up: your Inter result.</p>
+    <a href="{% url 'inter_entry' %}" class="btn btn-primary">Continue: Inter Result &rarr;</a>
+  </div>
+{% elif next_step == 'test' %}
+  <div class="card highlight">
+    <h3>Almost there!</h3>
+    <p class="muted">Take the 30-question personality test to finish your profile.</p>
+    <a href="{% url 'psych_test' %}" class="btn btn-primary">Continue: Personality Test &rarr;</a>
+  </div>
+{% else %}
+  <div class="card highlight">
+    <h3>&#127881; All steps complete!</h3>
+    <p class="muted">Your personalized career recommendations are ready.</p>
+    <a href="{% url 'results' %}" class="btn btn-primary">View Your Results</a>
+  </div>
+{% endif %}
+{% endblock %}

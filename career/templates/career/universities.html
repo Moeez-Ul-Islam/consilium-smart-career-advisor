@@ -1,0 +1,23 @@
+{% extends 'career/base.html' %}
+{% block title %}Universities | Consilium  -  Smart Career Advisor{% endblock %}
+{% block content %}
+<h1>Pakistani Universities</h1>
+<p class="muted">Well-known Pakistani universities by career category.</p>
+
+{% for category, unis in grouped.items %}
+  <div class="card">
+    <h3>{{ category }}</h3>
+    <ul class="uni-list">
+      {% for u in unis %}
+        <li>
+          <strong>{{ u.name }}</strong>, {{ u.city }}<br>
+          <span class="muted small">{{ u.programs }}</span>
+          {% if u.website %} <a href="{{ u.website }}" target="_blank" class="small">website</a>{% endif %}
+        </li>
+      {% endfor %}
+    </ul>
+  </div>
+{% empty %}
+  <div class="card"><p class="muted">No universities have been added yet.</p></div>
+{% endfor %}
+{% endblock %}

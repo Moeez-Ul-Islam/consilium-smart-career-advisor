@@ -1,0 +1,125 @@
+{% extends 'career/base.html' %}
+{% block title %}Your Results | Consilium  -  Smart Career Advisor{% endblock %}
+{% block content %}
+<div class="results-head">
+  <h1>Your Career Recommendations</h1>
+  <a href="{% url 'results_pdf' %}" class="btn btn-primary">Download PDF</a>
+</div>
+
+<div class="card profile-card">
+  <h3>Your Profile</h3>
+  <p><strong>Personality Type:</strong> {{ dominant_name }}</p>
+  <div class="riasec">
+    {% for name, s in scores_named %}
+      <div class="riasec-row trait-{{ forloop.counter0 }}">
+        <div class="riasec-head">
+          <span class="riasec-name">{{ name }}</span>
+          <span class="riasec-score">{{ s }}/25</span>
+        </div>
+        <div class="bar"><div class="fill" style="width:{% widthratio s 25 100 %}%"></div></div>
+      </div>
+    {% endfor %}
+  </div>
+  <div class="fit-pills">
+    <span class="fit-pill">Matric: {{ matric.percentage }}%</span>
+    <span class="fit-pill">Inter: {{ inter.percentage }}%</span>
+  </div>
+  <p class="muted small">Scoring formula: Matric 30% + Inter 40% + Personality fit 30%.
+    Each degree is scored on its own relevant subjects and ranked inside its career.</p>
+</div>
+
+{% for c in top3 %}
+<div class="card result-card {% if forloop.first %}top-pick{% endif %}">
+  <div class="rank-row"><span class="rank">#{{ forloop.counter }}{% if forloop.first %}  -  Best Match{% endif %}</span></div>
+  <h3>{{ c.name }} <span class="score">{{ c.score }}%</span></h3>
+  <p class="desc-clamp">{{ c.desc }}</p>
+  <div class="card-toggles">
+    <button type="button" class="toggle-btn" data-target="why-{{ forloop.counter }}"
+            aria-expanded="false" aria-controls="why-{{ forloop.counter }}">Why?</button>
+    <button type="button" class="toggle-btn" data-target="details-{{ forloop.counter }}"
+            aria-expanded="false" aria-controls="details-{{ forloop.counter }}">Details</button>
+  </div>
+
+  <div class="toggle-panel" id="why-{{ forloop.counter }}">
+    <p class="reasoning"><strong>Why?</strong> {{ c.reasoning }}</p>
+    {% if c.admission_note %}
+      <p class="bridge-note"><strong>Note:</strong> {{ c.admission_note }}</p>
+    {% endif %}
+  </div>
+
+  <div class="toggle-panel" id="details-{{ forloop.counter }}">
+    <h4>Recommended Bachelor Degrees (ranked):</h4>
+    <ol class="degree-list">
+      {% for d in c.degrees %}
+      <li>
+        <div class="deg-row">
+          <span class="deg-name">{{ d.name }}</span>
+          <span class="deg-score">{{ d.score }}%</span>
+        </div>
+        <div class="bar"><div class="fill deg-fill" style="width:{{ d.score }}%"></div></div>
+        {% for n in d.notes %}<p class="bridge-note small">{{ n }}</p>{% endfor %}
+      </li>
+      {% endfor %}
+    </ol>
+    <h4>Top Universities in Pakistan:</h4>
+    <ul class="uni-list">
+      {% for u in c.universities %}
+        <li><strong>{{ u.name }}</strong>, {{ u.city }}
+          {% if u.website %}<a href="{{ u.website }}" target="_blank" class="small">website</a>{% endif %}</li>
+      {% empty %}
+        <li class="muted">Universities will be added soon.</li>
+      {% endfor %}
+    </ul>
+
+    <div class="onet-block">
+      {% if c.onet %}
+        <p class="onet-verified">
+          <span class="verified-badge">&#10003; Verified by O*NET &middot; U.S. Dept. of Labor</span>
+          <span class="soc-tiny muted">SOC {{ c.onet.soc_code }}</span>
+        </p>
+        <p class="onet-title"><strong>{{ c.onet.title }}</strong></p>
+        {% if c.onet.description %}<p class="onet-desc">{{ c.onet.description }}</p>{% endif %}
+        {% if c.onet.match_rows %}
+          <h4 class="match-head">Your personality vs this occupation&rsquo;s needs</h4>
+          <div class="match-rows">
+            {% for m in c.onet.match_rows %}
+              <div class="match-row">
+                <span class="match-name">{{ m.name }}</span>
+                <div class="match-bar"><div class="match-fill fill-{{ m.level|slugify }}" style="width:{{ m.student_score|floatformat:0 }}%"></div></div>
+                <span class="match-score">{{ m.student_score|floatformat:0 }}/100</span>
+                <span class="match-chip chip-{{ m.level|slugify }}">{{ m.level }}</span>
+              </div>
+            {% endfor %}
+          </div>
+        {% endif %}
+      {% else %}
+        <p class="small muted">Official O*NET data is currently unavailable for this occupation.</p>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endfor %}
+
+<a href="{% url 'dashboard' %}" class="btn">&larr; Back to Dashboard</a>
+
+<script>
+(function () {
+  document.querySelectorAll('.toggle-btn').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var panel = document.getElementById(btn.getAttribute('data-target'));
+      if (!panel) return;
+      var willOpen = btn.getAttribute('aria-expanded') !== 'true';
+      btn.setAttribute('aria-expanded', willOpen ? 'true' : 'false');
+      btn.classList.toggle('active', willOpen);
+      panel.classList.toggle('open', willOpen);
+    });
+  });
+})();
+</script>
+
+<div class="card" style="margin-top: 24px; text-align: center;">
+  <h3>How were your recommendations?</h3>
+  <p class="muted">Your feedback helps us improve Consilium.</p>
+  <a href="{% url 'feedback' %}?category=results" class="btn">Give Feedback</a>
+</div>
+{% endblock %}

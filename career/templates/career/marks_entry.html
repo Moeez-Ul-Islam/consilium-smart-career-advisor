@@ -1,0 +1,805 @@
+{% extends 'career/base.html' %}
+{% block title %}{{ level_name }} Result - Consilium{% endblock %}
+{% block content %}
+<div class="card">
+  <h2>{{ level_name }} Result</h2>
+  <p class="marks-note">You can edit the total marks of any subject to match your marksheet.</p>
+  <form method="post" enctype="multipart/form-data" id="marks-form">
+    {% csrf_token %}
+    <input type="hidden" name="fa_electives" id="fa-electives-input" value="{{ posted_fa_electives }}">
+
+    <div class="field">
+      <label for="stream">Select Your Stream</label>
+      {% if level == 'matric' %}
+      <select id="stream-group" class="input" required>
+        <option value="">-- Select Group --</option>
+        <option value="science" {% if selected_stream == "science_bio" or selected_stream == "matric_cs" %}selected{% endif %}>Science</option>
+        <option value="health_science" {% if selected_stream == "health_science" %}selected{% endif %}>Health Science</option>
+        <option value="agriculture" {% if selected_stream == "agriculture" %}selected{% endif %}>Agriculture</option>
+        <option value="arts" {% if selected_stream == "arts" %}selected{% endif %}>Arts / Humanities</option>
+        <option value="commerce" {% if selected_stream == "commerce" %}selected{% endif %}>Commerce</option>
+        <option value="fashion_design" {% if selected_stream == "fashion_design" %}selected{% endif %}>Fashion Designing</option>
+      </select>
+    </div>
+
+    <div class="field" id="variant-field" style="display:none">
+      <label for="stream-variant">Science Stream</label>
+      <select id="stream-variant" class="input">
+        <option value="">-- Select --</option>
+        <option value="science_bio" {% if selected_stream == "science_bio" %}selected{% endif %}>with Biology</option>
+        <option value="matric_cs" {% if selected_stream == "matric_cs" %}selected{% endif %}>with Computer Science</option>
+      </select>
+    </div>
+      {% else %}
+      <select id="stream-group-inter" class="input" required>
+        <option value="">-- Select Stream --</option>
+        <option value="pre_medical" {% if selected_stream == "pre_medical" %}selected{% endif %}>Pre-Medical</option>
+        <option value="pre_engineering" {% if selected_stream == "pre_engineering" %}selected{% endif %}>Pre-Engineering</option>
+        <option value="ics" {% if selected_stream == "ics_physics" or selected_stream == "ics_stats" or selected_stream == "ics_economics" %}selected{% endif %}>ICS (Computer Science)</option>
+        <option value="icom" {% if selected_stream == "icom" %}selected{% endif %}>ICom (Commerce)</option>
+        <option value="fa" {% if selected_stream == "fa" %}selected{% endif %}>FA (Arts)</option>
+        <option value="general_science" {% if selected_stream == "general_science" %}selected{% endif %}>General Science</option>
+      </select>
+    </div>
+
+    <div class="field" id="ics-variant-field" style="display:none">
+      <label for="ics-variant">ICS Group</label>
+      <select id="ics-variant" class="input">
+        <option value="">-- Select Group --</option>
+        <option value="ics_physics" {% if selected_stream == "ics_physics" %}selected{% endif %}>with Physics</option>
+        <option value="ics_stats" {% if selected_stream == "ics_stats" %}selected{% endif %}>with Statistics</option>
+        <option value="ics_economics" {% if selected_stream == "ics_economics" %}selected{% endif %}>with Economics</option>
+      </select>
+    </div>
+      {% endif %}
+    <select name="stream" id="stream" style="display:none">
+      <option value="">--</option>
+      {% for key, s in streams.items %}
+        <option value="{{ key }}" {% if selected_stream == key %}selected{% endif %}>{{ s.name }}</option>
+      {% endfor %}
+    </select>
+
+    <div class="field">
+      <label for="board">Your Board</label>
+      <select name="board" id="board" class="input" required>
+        <option value="">-- Select Board --</option>
+        {% for group_label, boards in board_groups %}
+        <optgroup label="{{ group_label }}">
+          {% for key, name in boards %}
+          <option value="{{ key }}" {% if selected_board == key %}selected{% endif %}>{{ name }}</option>
+          {% endfor %}
+        </optgroup>
+        {% endfor %}
+      </select>
+      <p class="muted small">Passing marks are 40% for FBISE, Sindh, AJK and some boards, 33% for the rest (IBCC).</p>
+    </div>
+
+    <div id="subjects-box"></div>
+    {% if level == 'matric' %}
+    <div id="matric-grade-line" class="grade-line" style="display:none">
+      Overall: <span id="grade-obt"></span> / <span id="grade-tot"></span>
+      (<span id="grade-pct"></span>%) &nbsp; Grade: <span id="grade-letter" class="grade-badge"></span>
+    </div>
+    {% endif %}
+    <div id="fa-picker" style="display:none">
+      <p class="fa-picker-title">Select your elective subjects <span class="muted small" id="fa-counter"></span></p>
+      <p class="muted small">Tap one subject from each group, as per board rules.</p>
+      <div id="fa-cards"></div>
+      <p class="row-error-msg" id="fa-error" style="display:none"></p>
+    </div>
+    <p class="muted small" id="subjects-hint" style="display:none">
+      Enter <strong>obtained</strong> and <strong>total</strong> marks.
+      Totals are prefilled  -  edit them per your board.
+      Compulsory subjects are required; add at least 2 electives.
+      Tarjuma-tul-Quran is optional  -  skip it if your marksheet does not have it.
+    </p>
+
+    <div class="field">
+      <label>Marksheet Scan</label>
+      <div class="scan-card" id="scan-card">
+        <input type="file" name="marksheet" id="marksheet" accept="image/*" hidden>
+        <div class="scan-drop" id="scan-drop">
+          <div class="scan-icon">&#128247;</div>
+          <div class="scan-drop-text"><strong>Tap to upload</strong> or drag your marksheet here</div>
+          <div class="scan-drop-sub">JPG, PNG or WebP  -  scan fills the form automatically</div>
+        </div>
+        <div class="scan-preview-wrap" id="scan-preview-wrap" style="display:none">
+          <div class="scan-preview" id="scan-preview">
+            <img id="scan-img" alt="Marksheet preview">
+            <div class="scan-laser" id="scan-laser"></div>
+          </div>
+          <div class="scan-preview-bar">
+            <span id="scan-filename" class="scan-filename"></span>
+            <button type="button" id="scan-change" class="link-btn">Change</button>
+          </div>
+        </div>
+        <div class="scan-actions">
+          <button type="button" id="scan-btn" class="btn btn-scan" disabled>
+            <span class="scan-btn-icon">&#9889;</span> Scan Marksheet
+          </button>
+          <span id="scan-status" class="scan-status"></span>
+        </div>
+      </div>
+      <div id="stream-mismatch" class="stream-mismatch" style="display:none">
+        <span id="stream-mismatch-text"></span>
+        <button type="button" id="switch-stream-btn" class="btn btn-sm">Switch stream</button>
+      </div>
+      <p class="muted small">The marksheet scan fills the form from your marksheet  -  you can still edit everything.
+        If it fails, enter the marks manually.</p>
+      {% if record and record.marksheet %}
+        <p class="muted small">Uploaded: <a href="{{ record.marksheet.url }}" target="_blank">view marksheet</a></p>
+      {% endif %}
+    </div>
+
+    <div class="form-actions">
+      <button type="submit" id="save-btn" class="btn btn-primary">Save &amp; Continue</button>
+      {% if has_result %}
+      <button type="submit" name="action" value="update_result" class="btn">Save &amp; Update Result</button>
+      {% endif %}
+      <a href="{% url back_url %}" class="btn">Back</a>
+    </div>
+  </form>
+
+  {% if record %}
+  <div class="danger-zone">
+    <form method="post" action="{% url 'delete_record' level=level %}"
+          onsubmit="return confirm('Delete your {{ level_name }} marks? You can enter them again.');">
+      {% csrf_token %}
+      <button type="submit" class="link-danger">Delete this {{ level_name }} record</button>
+    </form>
+  </div>
+  {% endif %}
+</div>
+
+{{ streams|json_script:"streams-data" }}
+{{ default_totals|json_script:"default-totals" }}
+{{ boards_json|json_script:"boards-data" }}
+{% if fa_groups %}{{ fa_groups|json_script:"fa-groups-data" }}{% endif %}
+{% if posted_subjects %}{{ posted_subjects|json_script:"posted-subjects" }}{% elif record %}{{ record.subjects_data|json_script:"saved-subjects" }}{% endif %}
+<script>
+(function() {
+  var streamsEl = document.getElementById('streams-data');
+  var streams = JSON.parse(streamsEl.textContent);
+  var defaults = JSON.parse(document.getElementById('default-totals').textContent);
+  var savedEl = document.getElementById('saved-subjects');
+  var postedEl = document.getElementById('posted-subjects');
+  var saved = postedEl ? JSON.parse(postedEl.textContent)
+                       : (savedEl ? JSON.parse(savedEl.textContent) : {});
+  var streamSel = document.getElementById('stream');
+  var box = document.getElementById('subjects-box');
+  var hint = document.getElementById('subjects-hint');
+
+  function streamData() {
+    var key = streamSel.value;
+    if (!key || !streams[key]) return null;
+    return streams[key];
+  }
+
+  function render() {
+    var sd = streamData();
+    box.innerHTML = '';
+    var faPicker = document.getElementById('fa-picker');
+    var isFA = streamSel.value === 'fa' && faGroups;
+    if (faPicker) faPicker.style.display = isFA ? 'block' : 'none';
+    if (!sd) { hint.style.display = 'none'; return; }
+    hint.style.display = 'block';
+    if (isFA) {
+      renderFACards();
+      renderFAForm();
+      return;
+    }
+    var nComp = sd.compulsory.length;
+    var nOpt = (sd.optional || []).length;
+    var subjects = sd.compulsory.concat(sd.optional || [], sd.elective);
+    subjects.forEach(function(subj, i) {
+      var prev = saved[subj] || {};
+      var isComp = i < nComp;
+      var isOpt = !isComp && i < nComp + nOpt;
+      var totalVal = (prev.total !== undefined) ? prev.total
+        : (defaults[subj] !== undefined ? defaults[subj] : '');
+      var row = document.createElement('div');
+      row.className = 'subject-row';
+      row.setAttribute('data-subject', subj.toLowerCase());
+      row.innerHTML =
+        '<span class="subject-name">' + subj +
+          (isComp ? ' <span class="badge-compulsory">Compulsory</span>' :
+           isOpt ? ' <span class="badge-optional">Optional</span>' : '') + '</span>' +
+        '<input type="hidden" name="subject_' + i + '" value="' + subj.replace(/"/g, '&quot;') + '">' +
+        '<input type="number" step="1" min="0" name="obtained_' + i + '" class="input num" placeholder="Obtained" value="' + (prev.obtained !== undefined ? prev.obtained : '') + '"' + (isComp ? ' required' : '') + '>' +
+        '<input type="number" step="1" min="0" max="250" name="total_' + i + '" class="input num" placeholder="Total (editable)" value="' + totalVal + '"' + (isComp ? ' required' : '') + '>' +
+        '<span class="row-error-msg">Total can\'t be less than obtained marks or more than 250.</span>' +
+        '<span class="row-warn-msg"></span>';
+      box.appendChild(row);
+    });
+    validateRows();
+    updateGradeLine();
+  }
+
+  var faGroupsEl = document.getElementById('fa-groups-data');
+  var faGroups = faGroupsEl ? JSON.parse(faGroupsEl.textContent) : null;
+  var faSelected = {};
+
+  function renderFACards() {
+    var wrap = document.getElementById('fa-cards');
+    wrap.innerHTML = '';
+    if (!Object.keys(faSelected).length) {
+      var faInput = document.getElementById('fa-electives-input');
+      var picked = [];
+      if (faInput && faInput.value) {
+        try { picked = JSON.parse(faInput.value); } catch (e) { picked = []; }
+      }
+      Object.keys(faGroups).forEach(function(g) {
+        picked.forEach(function(s) {
+          if (faGroups[g].indexOf(s) !== -1 && !faSelected[g]) faSelected[g] = s;
+        });
+      });
+    }
+    if (!Object.keys(faSelected).length && saved) {
+      Object.keys(faGroups).forEach(function(g) {
+        Object.keys(saved).forEach(function(s) {
+          if (faGroups[g].indexOf(s) !== -1 && !faSelected[g]) faSelected[g] = s;
+        });
+      });
+    }
+    Object.keys(faGroups).forEach(function(cat) {
+      var catDiv = document.createElement('div');
+      catDiv.className = 'fa-cat';
+      var title = document.createElement('p');
+      title.className = 'fa-cat-title';
+      title.textContent = cat + (faSelected[cat] ? ' - ' + faSelected[cat] : ' - select one');
+      catDiv.appendChild(title);
+      var grid = document.createElement('div');
+      grid.className = 'fa-grid';
+      faGroups[cat].forEach(function(subj) {
+        var card = document.createElement('button');
+        card.type = 'button';
+        var isSel = faSelected[cat] === subj;
+        card.className = 'fa-card' + (isSel ? ' selected' : '');
+        card.setAttribute('data-subject', subj);
+        var label = document.createElement('span');
+        label.textContent = subj;
+        card.appendChild(label);
+        if (isSel) {
+          var cross = document.createElement('span');
+          cross.className = 'fa-cross';
+          cross.textContent = '×';
+          cross.title = 'Remove';
+          cross.addEventListener('click', function(ev) {
+            ev.stopPropagation();
+            toggleFACard(cat, subj);
+          });
+          card.appendChild(cross);
+        }
+        card.addEventListener('click', function() { toggleFACard(cat, subj); });
+        grid.appendChild(card);
+      });
+      catDiv.appendChild(grid);
+      wrap.appendChild(catDiv);
+    });
+    updateFACounter();
+  }
+
+  function toggleFACard(cat, subj) {
+    if (faSelected[cat] === subj) {
+      delete faSelected[cat];
+    } else {
+      faSelected[cat] = subj;
+    }
+    document.getElementById('fa-error').style.display = 'none';
+    renderFACards();
+    renderFAForm();
+  }
+
+  function updateFACounter() {
+    var c = document.getElementById('fa-counter');
+    if (c) c.textContent = '(' + Object.keys(faSelected).length + ' of 3 selected)';
+  }
+
+  function renderFAForm() {
+    var sd = streamData();
+    box.innerHTML = '';
+    var picked = Object.keys(faGroups).map(function(g) { return faSelected[g]; })
+      .filter(function(s) { return !!s; });
+    var subjects = sd.compulsory.concat(picked);
+    var nComp = sd.compulsory.length;
+    subjects.forEach(function(subj, i) {
+      var prev = saved[subj] || {};
+      var isComp = i < nComp;
+      var totalVal = (prev.total !== undefined) ? prev.total
+        : (defaults[subj] !== undefined ? defaults[subj] : '');
+      var row = document.createElement('div');
+      row.className = 'subject-row';
+      row.setAttribute('data-subject', subj.toLowerCase());
+      row.innerHTML =
+        '<span class="subject-name">' + subj +
+          (isComp ? ' <span class="badge-compulsory">Compulsory</span>' : '') + '</span>' +
+        '<input type="number" step="1" min="0" name="obtained_' + i + '" class="input num" placeholder="Obtained" value="' + (prev.obtained !== undefined ? prev.obtained : '') + '"' + (isComp ? ' required' : '') + '>' +
+        '<input type="number" step="1" min="0" max="250" name="total_' + i + '" class="input num" placeholder="Total (editable)" value="' + totalVal + '"' + (isComp ? ' required' : '') + '>' +
+        '<span class="row-error-msg">Total can\'t be less than obtained marks or more than 250.</span>' +
+        '<span class="row-warn-msg"></span>';
+      box.appendChild(row);
+    });
+    validateRows();
+    updateGradeLine();
+  }
+
+  var marksForm = document.getElementById('marks-form');
+  var faElectivesInput = document.getElementById('fa-electives-input');
+  if (marksForm) {
+    marksForm.addEventListener('submit', function(e) {
+      if (streamSel.value === 'fa' && faGroups) {
+        var pickedCount = Object.keys(faSelected).length;
+        var needGroups = Object.keys(faGroups);
+        if (pickedCount < needGroups.length) {
+          e.preventDefault();
+          var err = document.getElementById('fa-error');
+          var missing = needGroups.filter(function(g) { return !faSelected[g]; });
+          err.textContent = 'Please select one subject from each group. Missing: ' + missing.join(', ') + '.';
+          err.style.display = 'block';
+          document.getElementById('fa-picker').scrollIntoView({behavior: 'smooth'});
+          return;
+        }
+        var pickedList = needGroups.map(function(g) { return faSelected[g]; });
+        faElectivesInput.value = JSON.stringify(pickedList);
+      }
+    });
+  }
+
+  function rowIsBad(row) {
+    var inputs = row.querySelectorAll('input.num');
+    var obt = parseInt(inputs[0].value, 10);
+    var tot = parseInt(inputs[1].value, 10);
+    if (isNaN(obt) || isNaN(tot)) return false;
+    if (obt > tot) return true;
+    if (tot > 250) return true;
+    return false;
+  }
+
+  function validateRows() {
+    var bad = [];
+    box.querySelectorAll('.subject-row').forEach(function(row) {
+      var inputs = row.querySelectorAll('input.num');
+      var msg = row.querySelector('.row-error-msg');
+      if (rowIsBad(row)) {
+        row.classList.add('has-error');
+        inputs[0].classList.add('input-error');
+        inputs[1].classList.add('input-error');
+        msg.classList.add('show');
+        bad.push(row);
+      } else {
+        row.classList.remove('has-error');
+        inputs[0].classList.remove('input-error');
+        inputs[1].classList.remove('input-error');
+        msg.classList.remove('show');
+      }
+    });
+    return bad;
+  }
+
+  var boardSel = document.getElementById('board');
+  var boardsData = JSON.parse(document.getElementById('boards-data').textContent);
+  var level = '{{ level }}';
+  function passingPct() {
+    var b = boardsData[boardSel.value];
+    return b ? b.passing_pct : 33;
+  }
+  function rowBelowPassing(row) {
+    var inputs = row.querySelectorAll('input.num');
+    var obt = parseFloat(inputs[0].value);
+    var tot = parseFloat(inputs[1].value);
+    if (isNaN(obt) || isNaN(tot) || tot <= 0) return false;
+    return obt / tot * 100 < passingPct();
+  }
+  function validatePassing() {
+    var bad = [];
+    clearPassingHints();
+    if (!boardSel.value) return bad;
+    var pass = passingPct();
+    box.querySelectorAll('.subject-row').forEach(function(row) {
+      var inputs = row.querySelectorAll('input.num');
+      var wmsg = row.querySelector('.row-warn-msg');
+      if (rowBelowPassing(row) && !rowIsBad(row)) {
+        wmsg.textContent = level === 'matric'
+          ? 'Below passing marks (' + pass + '%) - Matric must be fully passed to reach Inter.'
+          : 'Below passing marks (' + pass + '%) - please double-check your entry.';
+        wmsg.classList.add('show');
+        if (level === 'matric') {
+          row.classList.add('has-error');
+          inputs[0].classList.add('input-error');
+          bad.push(row);
+        } else {
+          row.classList.add('has-warning');
+        }
+      } else {
+        wmsg.classList.remove('show');
+        row.classList.remove('has-warning');
+        if (level === 'matric' && !rowIsBad(row)) {
+          row.classList.remove('has-error');
+          inputs[0].classList.remove('input-error');
+        }
+      }
+    });
+    return bad;
+  }
+
+  function gradeFor(pct, pass) {
+    if (pct === null || pct < pass) return 'F';
+    if (pct >= 80) return 'A+';
+    if (pct >= 70) return 'A';
+    if (pct >= 60) return 'B';
+    if (pct >= 50) return 'C';
+    return 'D';
+  }
+  function updateGradeLine() {
+    var line = document.getElementById('matric-grade-line');
+    if (!line) return;
+    var obt = 0, tot = 0, count = 0;
+    box.querySelectorAll('.subject-row').forEach(function(row) {
+      var inputs = row.querySelectorAll('input.num');
+      var o = parseFloat(inputs[0].value);
+      var t = parseFloat(inputs[1].value);
+      if (!isNaN(o) && !isNaN(t) && t > 0) { obt += o; tot += t; count++; }
+    });
+    if (!count || tot <= 0) { line.style.display = 'none'; return; }
+    var pct = obt / tot * 100;
+    document.getElementById('grade-obt').textContent = obt;
+    document.getElementById('grade-tot').textContent = tot;
+    document.getElementById('grade-pct').textContent = pct.toFixed(2);
+    document.getElementById('grade-letter').textContent = gradeFor(pct, passingPct());
+    line.style.display = 'block';
+  }
+
+  var passTimer = null;
+  function schedulePassingCheck() {
+    clearTimeout(passTimer);
+    passTimer = setTimeout(validatePassing, 1500);
+  }
+  function clearPassingHints() {
+    box.querySelectorAll('.subject-row').forEach(function(row) {
+      row.querySelector('.row-warn-msg').classList.remove('show');
+      row.classList.remove('has-warning');
+      if (!rowIsBad(row)) {
+        row.classList.remove('has-error');
+        row.querySelectorAll('input.num').forEach(function(i) {
+          i.classList.remove('input-error');
+        });
+      }
+    });
+  }
+
+  box.addEventListener('input', function(e) {
+    if (!e.target.classList || !e.target.classList.contains('num')) return;
+    validateRows();
+    clearPassingHints();
+    updateGradeLine();
+    schedulePassingCheck();
+  });
+  box.addEventListener('keydown', function(e) {
+    if (!e.target.classList || !e.target.classList.contains('num')) return;
+    if (['.', '-', '+', 'e', 'E'].indexOf(e.key) !== -1) e.preventDefault();
+  });
+  box.addEventListener('paste', function(e) {
+    if (!e.target.classList || !e.target.classList.contains('num')) return;
+    e.preventDefault();
+    var text = (e.clipboardData.getData('text') || '').replace(/[^0-9]/g, '');
+    if (e.target.name.indexOf('total_') === 0 && parseInt(text, 10) > 250) text = '250';
+    document.execCommand('insertText', false, text);
+  });
+  box.addEventListener('focusout', function(e) {
+    if (e.target.classList && e.target.classList.contains('num')) {
+      clearTimeout(passTimer);
+      validateRows();
+      validatePassing();
+    }
+  });
+
+  var form = document.getElementById('marks-form');
+  form.addEventListener('submit', function(e) {
+    clearTimeout(passTimer);
+    var bad = validateRows();
+    var below = validatePassing();
+    if (level === 'matric') bad = bad.concat(below);
+    if (bad.length) {
+      e.preventDefault();
+      bad[0].scrollIntoView({behavior: 'smooth', block: 'center'});
+      bad[0].querySelector('input.num').focus();
+    }
+  });
+
+  form.addEventListener('keydown', function(e) {
+    if (e.key !== 'Enter') return;
+    var t = e.target;
+    if (!t.classList || !t.classList.contains('num')) return;
+    e.preventDefault();
+    var inputs = Array.prototype.slice.call(box.querySelectorAll('input.num'));
+    var idx = inputs.indexOf(t);
+    if (idx >= 0 && idx < inputs.length - 1) {
+      inputs[idx + 1].focus();
+    } else {
+      var saveBtn = document.getElementById('save-btn');
+      if (saveBtn) saveBtn.focus();
+    }
+  });
+
+  streamSel.addEventListener('change', function() {
+    saved = {};
+    lastScan = null;
+    pendingSwitchKey = null;
+    mismatchBox.style.display = 'none';
+    render();
+  });
+
+  var groupSel = document.getElementById('stream-group');
+  var variantField = document.getElementById('variant-field');
+  var variantSel = document.getElementById('stream-variant');
+  if (groupSel) {
+    (function initGroup() {
+      var cur = streamSel.value;
+      if (cur === 'science_bio' || cur === 'matric_cs') {
+        groupSel.value = 'science';
+        variantField.style.display = 'block';
+        variantSel.value = cur;
+      } else if (cur) {
+        groupSel.value = cur;
+      }
+    })();
+    groupSel.addEventListener('change', function() {
+      var g = groupSel.value;
+      if (g === 'science') {
+        variantField.style.display = 'block';
+        streamSel.value = variantSel.value || '';
+      } else {
+        variantField.style.display = 'none';
+        variantSel.value = '';
+        streamSel.value = g;
+      }
+      streamSel.dispatchEvent(new Event('change'));
+    });
+    variantSel.addEventListener('change', function() {
+      streamSel.value = variantSel.value;
+      streamSel.dispatchEvent(new Event('change'));
+    });
+  }
+  var icsGroupSel = document.getElementById('stream-group-inter');
+  var icsVariantField = document.getElementById('ics-variant-field');
+  var icsVariantSel = document.getElementById('ics-variant');
+  if (icsGroupSel) {
+    (function initIcs() {
+      var cur = streamSel.value;
+      if (cur === 'ics_physics' || cur === 'ics_stats' || cur === 'ics_economics') {
+        icsGroupSel.value = 'ics';
+        icsVariantField.style.display = 'block';
+        icsVariantSel.value = cur;
+      } else if (cur) {
+        icsGroupSel.value = cur;
+      }
+    })();
+    icsGroupSel.addEventListener('change', function() {
+      var g = icsGroupSel.value;
+      if (g === 'ics') {
+        icsVariantField.style.display = 'block';
+        streamSel.value = icsVariantSel.value || '';
+      } else {
+        icsVariantField.style.display = 'none';
+        icsVariantSel.value = '';
+        streamSel.value = g;
+      }
+      streamSel.dispatchEvent(new Event('change'));
+    });
+    icsVariantSel.addEventListener('change', function() {
+      streamSel.value = icsVariantSel.value;
+      streamSel.dispatchEvent(new Event('change'));
+    });
+  }
+  boardSel.addEventListener('change', function() { validateRows(); validatePassing(); updateGradeLine(); });
+  render();
+
+  var scanBtn = document.getElementById('scan-btn');
+  var scanStatus = document.getElementById('scan-status');
+  var fileInput = document.getElementById('marksheet');
+  var scanCard = document.getElementById('scan-card');
+  var scanDrop = document.getElementById('scan-drop');
+  var scanPreviewWrap = document.getElementById('scan-preview-wrap');
+  var scanPreview = document.getElementById('scan-preview');
+  var scanImg = document.getElementById('scan-img');
+  var scanFilename = document.getElementById('scan-filename');
+  var scanChange = document.getElementById('scan-change');
+
+  function setStatus(msg, cls) {
+    scanStatus.textContent = msg;
+    scanStatus.className = 'scan-status' + (cls ? ' ' + cls : '');
+  }
+
+  function showPreview(file) {
+    var reader = new FileReader();
+    reader.onload = function(e) {
+      scanImg.src = e.target.result;
+      scanFilename.textContent = file.name;
+      scanDrop.style.display = 'none';
+      scanPreviewWrap.style.display = 'block';
+      scanBtn.disabled = false;
+      setStatus('', '');
+    };
+    reader.readAsDataURL(file);
+  }
+
+  scanDrop.addEventListener('click', function() { fileInput.click(); });
+  scanChange.addEventListener('click', function() { fileInput.click(); });
+  fileInput.addEventListener('change', function() {
+    if (fileInput.files.length) showPreview(fileInput.files[0]);
+  });
+  ['dragenter', 'dragover'].forEach(function(ev) {
+    scanCard.addEventListener(ev, function(e) { e.preventDefault(); scanCard.classList.add('drag-over'); });
+  });
+  ['dragleave', 'drop'].forEach(function(ev) {
+    scanCard.addEventListener(ev, function(e) { e.preventDefault(); scanCard.classList.remove('drag-over'); });
+  });
+  scanCard.addEventListener('drop', function(e) {
+    var f = e.dataTransfer.files[0];
+    if (f && f.type.indexOf('image/') === 0) {
+      fileInput.files = e.dataTransfer.files;
+      showPreview(f);
+    }
+  });
+
+  var lastScan = null;
+  var pendingSwitchKey = null;
+  var mismatchBox = document.getElementById('stream-mismatch');
+  var mismatchText = document.getElementById('stream-mismatch-text');
+  var switchBtn = document.getElementById('switch-stream-btn');
+
+  function bestStreamFor(subjects) {
+    var names = subjects
+      .map(function(s) { return canonName(s.subject); })
+      .filter(function(n) { return !!n; });
+    var curKey = streamSel.value, best = null, bestCount = -1, curCount = -1;
+    if (curKey === 'fa' && faGroups && Object.keys(faSelected).length) {
+      var sd = streams['fa'];
+      var faPicked = Object.keys(faGroups).map(function(g) { return faSelected[g]; })
+        .filter(function(s) { return !!s; });
+      var pool = sd.compulsory.concat(faPicked).map(canonName);
+      var matched = names.filter(function(n) { return pool.indexOf(n) !== -1; });
+      var unmatched = names.filter(function(n) { return pool.indexOf(n) === -1; });
+      if (unmatched.length > 0) {
+        return {key: 'fa_reselect', name: null, unmatched: unmatched, matched: matched};
+      }
+      return null;
+    }
+    Object.keys(streams).forEach(function(key) {
+      var sd = streams[key];
+      var pool = sd.compulsory.concat(sd.optional || [], sd.elective).map(canonName);
+      var count = names.filter(function(n) { return pool.indexOf(n) !== -1; }).length;
+      if (key === curKey) curCount = count;
+      if (count > bestCount) { bestCount = count; best = {key: key, name: sd.name}; }
+    });
+    if (best && best.key !== curKey && bestCount > curCount) return best;
+    return null;
+  }
+
+  function fillFromScan(data) {
+    var filled = 0, unmatched = [];
+    data.subjects.forEach(function(s) {
+      var name = canonName(s.subject);
+      var hit = false;
+      var rows = box.querySelectorAll('.subject-row');
+      for (var k = 0; k < rows.length; k++) {
+        var rowCanon = canonName(rows[k].getAttribute('data-subject'));
+        if (rowCanon === name || (name && (rowCanon.indexOf(name) !== -1 || name.indexOf(rowCanon) !== -1))) {
+          var inputs = rows[k].querySelectorAll('input.num');
+          if (s.obtained !== null && s.obtained !== undefined) { inputs[0].value = s.obtained; filled++; }
+          if (s.total !== null && s.total !== undefined) { inputs[1].value = s.total; }
+          hit = true;
+          break;
+        }
+      }
+      if (!hit && s.obtained !== null && s.obtained !== undefined) unmatched.push(s.subject);
+    });
+    validateRows();
+    validatePassing();
+    updateGradeLine();
+    mismatchBox.style.display = 'none';
+    pendingSwitchKey = null;
+    if (unmatched.length) {
+      var curName = streamSel.options[streamSel.selectedIndex]
+        ? streamSel.options[streamSel.selectedIndex].text : '';
+      var text = 'The card has ' + unmatched.join(', ') +
+        ', which is not in your selected stream (' + curName + ').';
+      var best = bestStreamFor(data.subjects);
+      if (best) {
+        if (best.key === 'fa_reselect') {
+          text = 'The card has ' + best.unmatched.join(', ') +
+            ', which you did not select. Please update your elective selection above, ' +
+            'or keep the scanned subjects.';
+          switchBtn.style.display = 'none';
+        } else {
+          text += ' These marks look like "' + best.name + '".';
+          pendingSwitchKey = best.key;
+          switchBtn.style.display = '';
+        }
+      } else {
+        switchBtn.style.display = 'none';
+      }
+      mismatchText.textContent = text;
+      mismatchBox.style.display = 'flex';
+    }
+    return filled;
+  }
+
+  switchBtn.addEventListener('click', function() {
+    if (!pendingSwitchKey || !lastScan) return;
+    streamSel.value = pendingSwitchKey;
+    if (groupSel) {
+      if (pendingSwitchKey === 'science_bio' || pendingSwitchKey === 'matric_cs') {
+        groupSel.value = 'science';
+        variantField.style.display = 'block';
+        variantSel.value = pendingSwitchKey;
+      } else {
+        groupSel.value = pendingSwitchKey;
+        variantField.style.display = 'none';
+        variantSel.value = '';
+      }
+    }
+    saved = {};
+    render();
+    fillFromScan(lastScan);
+  });
+
+  function canonName(s) {
+    s = (s || '').toLowerCase().replace(/[^a-z]/g, '');
+    var map = {'islamicstudies': 'islamiat', 'pakistanstudies': 'pakstudies'};
+    return map[s] || s;
+  }
+
+  function getCookie(name) {
+    var m = document.cookie.match('(^|;)\\s*' + name + '\\s*=\\s*([^;]+)');
+    return m ? m.pop() : '';
+  }
+
+  scanBtn.addEventListener('click', function() {
+    if (!fileInput.files.length) {
+      setStatus('Please upload a marksheet image first.', 'err');
+      return;
+    }
+    if (!streamData()) {
+      setStatus('Please select your stream first.', 'err');
+      return;
+    }
+    scanBtn.disabled = true;
+    scanPreview.classList.add('scanning');
+    setStatus('Scanning marksheet...', 'busy');
+    var fd = new FormData();
+    fd.append('marksheet', fileInput.files[0]);
+    fetch("{% url 'scan_marksheet' %}", {
+      method: 'POST',
+      headers: {'X-CSRFToken': getCookie('csrftoken')},
+      body: fd
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      scanBtn.disabled = false;
+      scanPreview.classList.remove('scanning');
+      if (!data.ok) {
+        setStatus(data.error || 'Scan failed. Please enter the marks manually.', 'err');
+        return;
+      }
+      var boardMsg = '';
+      if (data.board && boardsData[data.board]) {
+        boardSel.value = data.board;
+        boardMsg = ' Board detected: ' + boardSel.options[boardSel.selectedIndex].text + '.';
+      }
+      lastScan = data;
+      var filled = fillFromScan(data);
+      setStatus((filled
+        ? 'Done! Filled marks for ' + filled + ' subjects.'
+        : 'Could not match any subject. Please enter marks manually.')
+        + boardMsg, filled ? 'ok' : 'err');
+    })
+    .catch(function() {
+      scanBtn.disabled = false;
+      scanPreview.classList.remove('scanning');
+      setStatus('Something went wrong. Please enter the marks manually.', 'err');
+    });
+  });
+})();
+</script>
+{% endblock %}

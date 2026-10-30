@@ -1,0 +1,36 @@
+{% extends 'career/base.html' %}
+{% block title %}Personality Test | Consilium  -  Smart Career Advisor{% endblock %}
+{% block content %}
+<div class="card">
+  <span class="hero-badge">Step 3 of 3</span>
+  <h2>Personality Test (Holland Code)</h2>
+  <p class="muted">{{ instruction }}</p>
+  <div style="background:#c7f9cc; border:1px solid #57cc99; border-radius:10px; padding:14px 16px; margin:12px 0 18px;">
+    <p style="margin:0 0 8px; font-weight:700;">Please read before you begin:</p>
+    <ul style="margin:0; padding-left:18px; line-height:1.7;">
+      <li><strong>There are no right or wrong answers.</strong> This test measures your interests, not your ability.</li>
+      <li><strong>Answer honestly.</strong> Choose what you genuinely enjoy, not what sounds impressive or what others expect.</li>
+      <li><strong>There are 30 work activities.</strong> Rate each one from 1 (Strongly Dislike) to 5 (Strongly Enjoy).</li>
+      <li><strong>Go with your first instinct.</strong> Do not overthink any question.</li>
+      <li><strong>Answer every question.</strong> Your results are only accurate if all 30 are completed.</li>
+    </ul>
+  </div>
+  <form method="post">
+    {% csrf_token %}
+    {% for i, q in questions %}
+      <div class="question">
+        <p><strong style="color:var(--teal);">{{ i }}.</strong> {{ q.0 }}</p>
+        <div class="likert">
+          {% for val, label in likert %}
+            <label class="likert-option">
+              <input type="radio" name="q{{ i }}" value="{{ val }}" required> {{ label }}
+            </label>
+          {% endfor %}
+        </div>
+      </div>
+    {% endfor %}
+    <button type="submit" class="btn btn-primary btn-block">Submit Test</button>
+  </form>
+  <p class="muted small" style="margin-top:14px">{{ onet_credit }}</p>
+</div>
+{% endblock %}
